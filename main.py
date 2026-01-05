@@ -103,6 +103,7 @@ for skin in df["skin_type"].unique():
 
 
 # ===== 메인 =====
+st.header("화장품 추천 대시보드")
 st.subheader("제품명 검색")
 
 search_keyword = st.session_state.get("search_keyword", "") 
