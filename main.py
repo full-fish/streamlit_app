@@ -2,8 +2,13 @@ import streamlit as st
 import pandas as pd
 import math
 import random # 임시
+import scroll
+from sidebar_filters import render_rating_slider, filter_by_rating
 
 st.set_page_config(layout="wide")
+
+# 페이지 최상단 앵커
+scroll.apply_scroll_to_top_if_requested()
 
 # ===== 임시 테스트용 데이터 =====
 products = [
@@ -100,6 +105,8 @@ for skin in df["skin_type"].unique():
     if st.sidebar.checkbox(skin, key=f"skin_{skin}"):
         selected_skin.append(skin)
 
+# 평점 슬라이더 (최소, 최대)
+min_rating, max_rating = render_rating_slider()
 
 
 # ===== 메인 =====
@@ -152,6 +159,9 @@ else:
     # 피부 타입 필터
     if selected_skin:
         filtered_df = filtered_df[filtered_df["skin_type"].isin(selected_skin)]
+        
+    # 평점 필터
+    filtered_df = filter_by_rating(filtered_df, min_rating, max_rating)
 
     # 평점 기준 정렬
     filtered_df = filtered_df.sort_values(by="score", ascending=False)
@@ -167,12 +177,14 @@ else:
     
     st.session_state.page = min(st.session_state.page, total_pages)
 
-    cur_filter = (search_text, tuple(selected_cat), selected_skin)
+    cur_filter = (search_text, tuple(selected_cat), tuple(selected_skin), min_rating, max_rating)
 
     # 검색어/필터 변경시
     if st.session_state.get("prev_filter") != cur_filter:
         st.session_state.page = 1
         st.session_state.prev_filter = cur_filter
+        # 필터 변경 시에도 상단으로 이동
+        scroll.request_scroll_to_top()
 
     # 데이터 슬라이싱
     start = (st.session_state.page - 1) * items_page
@@ -198,15 +210,27 @@ else:
 
     col_prev, col_info, col_next = st.columns([1, 2, 1])
 
+    # 이전 페이지 이동 콜백 함수
+    def go_prev():
+        if st.session_state.page > 1:
+            st.session_state.page -= 1
+            scroll.request_scroll_to_top() 
+
+
+    # 다음 페이지 이동 콜백 함수
+    def go_next():
+        if st.session_state.page < total_pages:
+            st.session_state.page += 1
+            scroll.request_scroll_to_top() 
+
+
     with col_prev:
-        if st.button("이전", key="prev_page"):
-            if st.session_state.page > 1:
-                st.session_state.page -= 1
+        # on_click 콜백 방식으로 변경
+        st.button("이전", key="prev_page", on_click=go_prev)  # (수정)
 
     with col_next:
-        if st.button("다음", key="next_page"):
-            if st.session_state.page < total_pages:
-                st.session_state.page += 1 
+        # on_click 콜백 방식으로 변경
+        st.button("다음", key="next_page", on_click=go_next)  # (수정)
 
     with col_info:
         st.markdown(
