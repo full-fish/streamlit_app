@@ -4,6 +4,7 @@ import math
 import random # 임시
 import scroll
 from sidebar import sidebar, product_filter
+from sample_data import load_data
 import css
 
 st.set_page_config(layout="wide")
@@ -11,95 +12,15 @@ st.set_page_config(layout="wide")
 # 페이지 최상단 앵커
 scroll.apply_scroll_to_top_if_requested()
 
-# ===== 임시 테스트용 데이터 =====
-products = [
-    # 크림
-    "닥터알파 수분 장벽 크림",
-    "라포레 진정 시카 크림",
-    "더마큐어 세라마이드 크림",
-    "하이드라랩 딥모이스트 크림",
-    "바이오힐 보습 리페어 크림",
-    "에스트라 아토베리어 크림",
-    "라운드랩 자작나무 수분크림",
-    "피지오겔 데일리 모이스처 크림",
-
-    # 토너
-    "라운드랩 독도 토너",
-    "아누아 어성초 77 토너",
-    "닥터지 그린 마일드 토너",
-    "마녀공장 비피다 토너",
-    "아이오페 더마 리페어 토너",
-    "에스트라 아토베리어 토너",
-
-    # 에센스/세럼
-    "마녀공장 갈락토미 에센스",
-    "아이오페 비타민 C 세럼",
-    "이니스프리 그린티 씨드 세럼",
-    "토리든 다이브인 저분자 세럼",
-    "닥터지 레드 블레미쉬 앰플",
-    "라로슈포제 히알루 B5 세럼",
-
-    # 클렌저
-    "라운드랩 약산성 클렌징폼",
-    "닥터지 그린 딥 포밍 클렌저",
-    "에스트라 약산성 클렌저",
-    "토리든 밸런스 클렌징 폼",
-    "마녀공장 퓨어 클렌징 오일",
-    "센텔리안24 마데카 클렌저",
-]
-
-main_categories = {
-    "스킨케어": ["크림", "토너", "에센스", "세럼"],
-    "클렌징": ["폼클렌저", "오일", "워터"]
-}
-
-sub_categories = {
-    "크림": ["보습", "장벽강화", "진정"],
-    "토너": ["수분공급", "피부결정돈", "진정"],
-    "에센스": ["광채", "미백", "탄력"],
-    "세럼": ["미백", "주름개선", "보습"],
-    "클렌저": ["세정", "저자극", "피지관리"],
-}
-
-skin_types = ["건성", "지성", "복합성", "민감성"]
-
-@st.cache_data
-def load_data():
-    rows = []
-
-    for product in products:
-        if "크림" in product:
-            main_cat = "스킨케어"
-            sub_cat = "크림"
-        elif "토너" in product:
-            main_cat = "스킨케어"
-            sub_cat = "토너"
-        elif "에센스" in product or "앰플" in product or "세럼" in product:
-            main_cat = "스킨케어"
-            sub_cat = "세럼"
-        else:
-            main_cat = "클렌징"
-            sub_cat = "폼클렌저"
 
 
-        rows.append({
-            "product": product,
-            "main_category": main_cat,
-            "sub_category": sub_cat,
-            "skin_type": random.choice(skin_types),
-            "keyword": random.choice(sub_categories.get(sub_cat, ["보습"])),
-            "score": round(random.uniform(1.0, 5.0), 2)
-        })
-
-    return pd.DataFrame(rows)
-
+# ===== 데이터프레임 =====
 df = load_data()
 
-
+skin_options = df["skin_type"].unique().tolist()
+product_options = df["product"].unique().tolist() 
 
 # ===== 사이드바 =====
-skin_options = df["skin_type"].unique().tolist()
-
 selected_sub_cat, selected_skin, min_rating, max_rating = sidebar(df)
 
 
@@ -110,8 +31,6 @@ st.subheader("제품명 검색")
 search_keyword = st.session_state.get("search_keyword", "") 
 def on_search_change(): 
     st.session_state.search_keyword = st.session_state.product_search 
-
-product_options = df["product"].unique().tolist() 
 
 # 제품 선택 해제 버튼
 def clear_selected_product():
@@ -199,7 +118,7 @@ else:
     else:
         for i, row in page_df.reset_index(drop=True).iterrows():
             # 한 줄(행) 단위 레이아웃
-            col_btn, col_info = st.columns([2, 8])
+            col_btn, col_card = st.columns([2, 10])
 
             with col_btn:
                 st.button(
@@ -208,16 +127,41 @@ else:
                     on_click=select_product_from_reco,
                     args=(row["product"],),
                 )
+            # 카드형 UI
+            with st.container(border=True):
+                col_image, col_info = st.columns([3, 7])
 
-            with col_info:
-                st.markdown(f"""
-                            **{row['product']}**
-                            - 카테고리: {row['main_category']}>{row['sub_category']}
-                            - 피부 타입: {row['skin_type']}
-                            - 대표 키워드: {row['keyword']}
-                            - 평점: {row['score']}
-                            """)
-                st.divider()
+                with col_image:
+                    st.image(row["image_url"], use_container_width=True)
+
+                with col_info:
+                    badge_html = ""
+                    if row["badge"] == "BEST":
+                        badge_html = "<span style='background:#ff4d4f;color:white;padding:2px 8px;border-radius:8px;font-size:12px;margin-left:8px;'>BEST</span>"
+                    if row["badge"] == "추천":
+                        badge_html = "<span style='background:#1890ff;color:white;padding:2px 8px;border-radius:8px;font-size:12px;margin-left:8px;'>추천</span>"
+
+                    st.markdown(f"""
+                        <div style="font-size:14px;color:#888;">
+                            {row['brand']}
+                            {badge_html}
+                        </div>
+                        <div style="font-size:18px;font-weight:600;margin:4px 0;">
+                            {row['product']}
+                        </div>
+                        <div style="font-size:15px;color:#111;font-weight:500;">
+                            ₩{row['price']:,}
+                        </div>
+                        <div style="margin-top:6px;font-size:13px;color:#555;">
+                            카테고리: {row['main_category']} &gt; {row['sub_category']}<br>
+                            피부 타입: {row['skin_type']}<br>
+                            대표 키워드: {row['keyword']}<br>
+                            추천 점수: {row['score']}
+                        </div>
+                        """,
+                    unsafe_allow_html=True
+                    )
+
 
     # 페이지 이동 버튼
     st.markdown("---")
