@@ -3,7 +3,7 @@ import pandas as pd
 import math
 import random # 임시
 import scroll
-from sidebar_filters import render_rating_slider, filter_by_rating
+from sidebar import sidebar, product_filter
 import css
 
 st.set_page_config(layout="wide")
@@ -98,47 +98,9 @@ df = load_data()
 
 
 # ===== 사이드바 =====
-st.sidebar.header("검색 조건")
-
-# cat_options = df["category"].unique().tolist()
 skin_options = df["skin_type"].unique().tolist()
 
-st.sidebar.subheader("카테고리")
-
-selected_sub_cat = []
-
-for main_cat in df["main_category"].unique():
-    with st.sidebar.expander(main_cat, expanded=False):
-        sub_cats = (df[df["main_category"] == main_cat]["sub_category"].unique().tolist())
-        all_key = f"all_{main_cat}"
-        all_checked = st.checkbox("전체 선택", key=all_key)
-
-        for sub in sub_cats:
-            sub_key = f"sub_{main_cat}_{sub}"
-
-            # 전체 선택
-            if all_checked:
-                st.session_state[sub_key] = True
-            elif all_key in st.session_state and not st.session_state[all_key]:
-                st.session_state.setdefault(sub_key, False)
-
-            checked = st.checkbox(sub, key=sub_key)
-
-            if checked:
-                selected_sub_cat.append(sub)
-
-st.sidebar.caption(f"선택된 카테고리: {len(selected_sub_cat)}개")
-
-
-st.sidebar.subheader("피부 타입")
-
-selected_skin = []
-for skin in df["skin_type"].unique():
-    if st.sidebar.checkbox(skin, key=f"skin_{skin}"):
-        selected_skin.append(skin)
-
-# 평점 슬라이더 (최소, 최대)
-min_rating, max_rating = render_rating_slider()
+selected_sub_cat, selected_skin, min_rating, max_rating = sidebar(df)
 
 
 # ===== 메인 =====
@@ -203,25 +165,8 @@ st.subheader("추천 상품")
 if is_initial:
     st.info("왼쪽 사이드바 또는 검색어를 입력하여 상품을 찾아보세요.")
 else:
-    filtered_df = df.copy()
-
-    # 검색어 조건
-    if search_text is not None:
-        filtered_df = filtered_df[filtered_df["product"].str.contains(search_text, case=False)]
-
-    # 카테고리 필터
-    if selected_sub_cat:
-        filtered_df = filtered_df[filtered_df["sub_category"].isin(selected_sub_cat)]
-
-    # 피부 타입 필터
-    if selected_skin:
-        filtered_df = filtered_df[filtered_df["skin_type"].isin(selected_skin)]
-        
-    # 평점 필터
-    filtered_df = filter_by_rating(filtered_df, min_rating, max_rating)
-
-    # 평점 기준 정렬
-    filtered_df = filtered_df.sort_values(by="score", ascending=False)
+    # 제품 필터링
+    filtered_df = product_filter(df, search_text, selected_sub_cat, selected_skin, min_rating, max_rating)
 
     # 페이지네이션
     items_page = 6
