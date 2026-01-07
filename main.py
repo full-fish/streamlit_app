@@ -48,7 +48,12 @@ products = [
     "센텔리안24 마데카 클렌저",
 ]
 
-categories = {
+main_categories = {
+    "스킨케어": ["크림", "토너", "에센스", "세럼"],
+    "클렌징": ["폼클렌저", "오일", "워터"]
+}
+
+sub_categories = {
     "크림": ["보습", "장벽강화", "진정"],
     "토너": ["수분공급", "피부결정돈", "진정"],
     "에센스": ["광채", "미백", "탄력"],
@@ -64,19 +69,25 @@ def load_data():
 
     for product in products:
         if "크림" in product:
-            category = "크림"
+            main_cat = "스킨케어"
+            sub_cat = "크림"
         elif "토너" in product:
-            category = "토너"
+            main_cat = "스킨케어"
+            sub_cat = "토너"
         elif "에센스" in product or "앰플" in product or "세럼" in product:
-            category = random.choice(["에센스", "세럼"])
+            main_cat = "스킨케어"
+            sub_cat = "세럼"
         else:
-            category = "클렌저"
+            main_cat = "클렌징"
+            sub_cat = "폼클렌저"
+
 
         rows.append({
             "product": product,
-            "category": category,
+            "main_category": main_cat,
+            "sub_category": sub_cat,
             "skin_type": random.choice(skin_types),
-            "keyword": random.choice(categories[category]),
+            "keyword": random.choice(sub_categories.get(sub_cat, ["보습"])),
             "score": round(random.uniform(1.0, 5.0), 2)
         })
 
@@ -89,15 +100,35 @@ df = load_data()
 # ===== 사이드바 =====
 st.sidebar.header("검색 조건")
 
-cat_options = df["category"].unique().tolist()
+# cat_options = df["category"].unique().tolist()
 skin_options = df["skin_type"].unique().tolist()
 
 st.sidebar.subheader("카테고리")
 
-selected_cat = []
-for cat in df["category"].unique():
-    if st.sidebar.checkbox(cat, key=f"cat_{cat}"):
-        selected_cat.append(cat)
+selected_sub_cat = []
+
+for main_cat in df["main_category"].unique():
+    with st.sidebar.expander(main_cat, expanded=False):
+        sub_cats = (df[df["main_category"] == main_cat]["sub_category"].unique().tolist())
+        all_key = f"all_{main_cat}"
+        all_checked = st.checkbox("전체 선택", key=all_key)
+
+        for sub in sub_cats:
+            sub_key = f"sub_{main_cat}_{sub}"
+
+            # 전체 선택
+            if all_checked:
+                st.session_state[sub_key] = True
+            elif all_key in st.session_state and not st.session_state[all_key]:
+                st.session_state.setdefault(sub_key, False)
+
+            checked = st.checkbox(sub, key=sub_key)
+
+            if checked:
+                selected_sub_cat.append(sub)
+
+st.sidebar.caption(f"선택된 카테고리: {len(selected_sub_cat)}개")
+
 
 st.sidebar.subheader("피부 타입")
 
@@ -151,7 +182,7 @@ def select_product_from_reco(product_name: str):
 search_text = selected_product if selected_product else ""
 
 # 초기 상태 여부
-is_initial = (not search_text and not selected_cat and not selected_skin)
+is_initial = (not search_text and not selected_sub_cat and not selected_skin)
 
 # 제품 정보
 if selected_product:
@@ -179,8 +210,8 @@ else:
         filtered_df = filtered_df[filtered_df["product"].str.contains(search_text, case=False)]
 
     # 카테고리 필터
-    if selected_cat:
-        filtered_df = filtered_df[filtered_df["category"].isin(selected_cat)]
+    if selected_sub_cat:
+        filtered_df = filtered_df[filtered_df["sub_category"].isin(selected_sub_cat)]
 
     # 피부 타입 필터
     if selected_skin:
@@ -203,7 +234,7 @@ else:
     
     st.session_state.page = min(st.session_state.page, total_pages)
 
-    cur_filter = (search_text, tuple(selected_cat), tuple(selected_skin), min_rating, max_rating)
+    cur_filter = (search_text, tuple(selected_sub_cat), tuple(selected_skin), min_rating, max_rating)
 
     # 검색어/필터 변경시
     if st.session_state.get("prev_filter") != cur_filter:
@@ -236,7 +267,7 @@ else:
             with col_info:
                 st.markdown(f"""
                             **{row['product']}**
-                            - 카테고리: {row['category']}
+                            - 카테고리: {row['main_category']}>{row['sub_category']}
                             - 피부 타입: {row['skin_type']}
                             - 대표 키워드: {row['keyword']}
                             - 평점: {row['score']}
