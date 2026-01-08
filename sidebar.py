@@ -17,9 +17,17 @@ def sidebar(df):
 
     selected_sub_cat = []
 
-    for main_cat in df["main_category"].unique():
-        with st.sidebar.expander(main_cat, expanded=False):
-            sub_cats = (df[df["main_category"] == main_cat]["sub_category"].unique().tolist())
+    for main_cat in df["main_category"].dropna().unique():
+        if not str(main_cat).strip():
+            continue
+
+        with st.sidebar.expander(str(main_cat), expanded=False):
+            sub_cats = (
+                df[df["main_category"] == main_cat]["sub_category"]
+                .dropna()
+                .unique()
+                .tolist()
+            )
             all_key = f"all_{main_cat}"
             clicked_flag_key = f"{all_key}__clicked"
 
