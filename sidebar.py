@@ -77,10 +77,41 @@ def sidebar(df):
         step=0.1
     )
 
-    return selected_sub_cat, selected_skin, min_rating, max_rating
+    # 가격 슬라이더
+    st.sidebar.subheader("가격")
+    # 가격 입력받기
+    col1, col2 = st.sidebar.columns(2)
+
+    with col1:
+        input_min_price = st.number_input(
+            "최소 가격",
+            min_value=1000,
+            max_value=50000,
+            value=25000,
+            step=100
+        )
+
+    with col2:
+        input_max_price = st.number_input(
+            "최대 가격",
+            min_value=input_min_price,
+            max_value=50000,
+            value=50000,
+            step=100
+        )
+
+    min_price, max_price = st.sidebar.slider(
+        "",
+        min_value=1000,
+        max_value=50000,
+        value=(input_min_price, input_max_price),
+        step=100
+    )
+
+    return selected_sub_cat, selected_skin, min_rating, max_rating, min_price, max_price
 
 # 필터링 함수
-def product_filter(df, search_text, selected_sub_cat, selected_skin, min_rating, max_rating):
+def product_filter(df, search_text, selected_sub_cat, selected_skin, min_rating, max_rating, min_price, max_price):
     filtered_df = df.copy()
 
     # 검색어 조건
@@ -100,5 +131,8 @@ def product_filter(df, search_text, selected_sub_cat, selected_skin, min_rating,
 
     # 평점 기준 정렬
     filtered_df = filtered_df.sort_values(by="score", ascending=False)
+
+    # 가격 필터
+    filtered_df = filtered_df[(filtered_df["price"] >= min_price) & (filtered_df["price"] <= max_price)]
 
     return filtered_df

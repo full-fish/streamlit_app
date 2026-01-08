@@ -21,7 +21,7 @@ skin_options = df["skin_type"].unique().tolist()
 product_options = df["product"].unique().tolist() 
 
 # ===== 사이드바 =====
-selected_sub_cat, selected_skin, min_rating, max_rating = sidebar(df)
+selected_sub_cat, selected_skin, min_rating, max_rating, min_price, max_price = sidebar(df)
 
 
 # ===== 메인 =====
@@ -87,7 +87,7 @@ if is_initial:
     st.info("왼쪽 사이드바 또는 검색어를 입력하여 상품을 찾아보세요.")
 else:
     # 제품 필터링
-    filtered_df = product_filter(df, search_text, selected_sub_cat, selected_skin, min_rating, max_rating)
+    filtered_df = product_filter(df, search_text, selected_sub_cat, selected_skin, min_rating, max_rating, min_price, max_price)
 
     # 페이지네이션
     items_page = 6
@@ -100,7 +100,7 @@ else:
     
     st.session_state.page = min(st.session_state.page, total_pages)
 
-    cur_filter = (search_text, tuple(selected_sub_cat), tuple(selected_skin), min_rating, max_rating)
+    cur_filter = (search_text, tuple(selected_sub_cat), tuple(selected_skin), min_rating, max_rating, min_price, max_price)
 
     # 검색어/필터 변경시
     if st.session_state.get("prev_filter") != cur_filter:
@@ -119,52 +119,54 @@ else:
         st.warning("조건에 맞는 상품이 없습니다.")
     else:
         for i, row in page_df.reset_index(drop=True).iterrows():
+            col_btn, col_card, col_space = st.columns([1.2, 6.5, 2.3])  # 레이아웃
             # 카드 컨테이너 안에서 버튼, 내용 배치
-            with st.container(border=True):
+            with col_card:
+                with st.container(border=True):
 
-                # 오른쪽 선택 버튼
-                top_left, top_right = st.columns([9, 1], vertical_alignment="center")
-                with top_right:
-                    st.button(
-                        "선택",
-                        key=f"reco_select_{st.session_state.page}_{i}",
-                        on_click=select_product_from_reco,
-                        args=(row["product"],),
-                    )
+                    # 오른쪽 선택 버튼
+                    top_left, top_right = st.columns([9, 1], vertical_alignment="center")
+                    with top_right:
+                        st.button(
+                            "선택",
+                            key=f"reco_select_{st.session_state.page}_{i}",
+                            on_click=select_product_from_reco,
+                            args=(row["product"],),
+                        )
 
-                 # 카드형 UI
-                col_image, col_info = st.columns([3, 7])
+                    # 카드형 UI
+                    col_image, col_info = st.columns([3, 7])
 
-                with col_image:
-                    st.image(row["image_url"], width="stretch")
+                    with col_image:
+                        st.image(row["image_url"], width="stretch")
 
-                with col_info:
-                    badge_html = ""
-                    if row["badge"] == "BEST":
-                        badge_html = "<span style='background:#ff4d4f;color:white;padding:2px 8px;border-radius:8px;font-size:12px;margin-left:8px;'>BEST</span>"
-                    if row["badge"] == "추천":
-                        badge_html = "<span style='background:#1890ff;color:white;padding:2px 8px;border-radius:8px;font-size:12px;margin-left:8px;'>추천</span>"
+                    with col_info:
+                        badge_html = ""
+                        if row["badge"] == "BEST":
+                            badge_html = "<span style='background:#ff4d4f;color:white;padding:2px 8px;border-radius:8px;font-size:12px;margin-left:8px;'>BEST</span>"
+                        if row["badge"] == "추천":
+                            badge_html = "<span style='background:#1890ff;color:white;padding:2px 8px;border-radius:8px;font-size:12px;margin-left:8px;'>추천</span>"
 
-                    st.markdown(f"""
-                        <div style="font-size:14px;color:#888;">
-                            {row['brand']}
-                            {badge_html}
-                        </div>
-                        <div style="font-size:18px;font-weight:600;margin:4px 0;">
-                            {row['product']}
-                        </div>
-                        <div style="font-size:15px;color:#111;font-weight:500;">
-                            ₩{row['price']:,}
-                        </div>
-                        <div style="margin-top:6px;font-size:13px;color:#555;">
-                            카테고리: {row['main_category']} &gt; {row['sub_category']}<br>
-                            피부 타입: {row['skin_type']}<br>
-                            대표 키워드: {row['keyword']}<br>
-                            추천 점수: {row['score']}
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+                        st.markdown(f"""
+                            <div style="font-size:14px;color:#888;">
+                                {row['brand']}
+                                {badge_html}
+                            </div>
+                            <div style="font-size:18px;font-weight:600;margin:4px 0;">
+                                {row['product']}
+                            </div>
+                            <div style="font-size:15px;color:#111;font-weight:500;">
+                                ₩{row['price']:,}
+                            </div>
+                            <div style="margin-top:6px;font-size:13px;color:#555;">
+                                카테고리: {row['main_category']} &gt; {row['sub_category']}<br>
+                                피부 타입: {row['skin_type']}<br>
+                                대표 키워드: {row['keyword']}<br>
+                                추천 점수: {row['score']}
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
 
 
     # 페이지 이동 버튼
