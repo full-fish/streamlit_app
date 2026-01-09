@@ -4,12 +4,13 @@ from pathlib import Path
 def load_raw_df(parquet_root: Path) -> pd.DataFrame:
     dfs = []
 
-    # category=XXX 폴더들 순회
-    for p in parquet_root.glob("category=*/data.parquet"):
+    # 하위 디렉토리까지 모두 검색
+    for p in parquet_root.rglob("*.parquet"):
         df = pd.read_parquet(p)
 
-        # 파티션 폴더명에서 category 값 추출
-        category = p.parent.name.replace("category=", "")
+        # category=XXX 폴더명 추출
+        category_folder = [part for part in p.parts if "category=" in part]
+        category = category_folder[0].replace("category=", "") if category_folder else "기타"
         df["category"] = category
 
         dfs.append(df)
