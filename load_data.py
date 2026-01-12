@@ -4,18 +4,6 @@ import streamlit as st
 import re
 import ast
 
-@st.cache_data(show_spinner=False)
-def load_reviews_map(path="data/reviews_map.parquet"):
-    p = Path(path)
-    if not p.exists():
-        return None
-
-    rdf = pd.read_parquet(p)
-    if not {"review_id", "review_text"}.issubset(rdf.columns):
-        return None
-
-    return rdf
-
 def load_raw_df(parquet_root: Path) -> pd.DataFrame:
     dfs = []
 
@@ -118,6 +106,7 @@ def make_df(df: pd.DataFrame) -> pd.DataFrame:
                 "product_url",
                 "total_reviews",
                 "top_keywords",
+                "category",
                 "category_path_norm",
                 "main_category",
                 "middle_category",
@@ -144,11 +133,6 @@ def make_df(df: pd.DataFrame) -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def load_reviews_df(reviews_path):
-    """
-    reviews 파일 로드 (parquet/csv)
-    최소 컬럼: review_id, review_text (또는 content/text)
-    """
-    from pathlib import Path
     reviews_path = Path(reviews_path)
     if not reviews_path.exists():
         raise FileNotFoundError(f"리뷰 파일을 찾지 못했습니다: {reviews_path}")

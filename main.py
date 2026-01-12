@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
 import math
-import random # 임시
 import scroll
-from load_data import load_raw_df, make_df
+from load_data import load_raw_df, make_df, load_raw_df, get_representative_texts
 from sidebar import sidebar, product_filter
 import css
 from pathlib import Path
@@ -211,7 +210,7 @@ if selected_product:
 
     # 디버그 출력 제거 + 해당 카테고리 리뷰 파일이 없으면 안내 후 스킵
     if not found_path:
-        st.info("현재 제공된 리뷰 데이터(partitioned_reviews)에 해당 카테고리 리뷰 파일이 없습니다.")
+        st.info("현재 제공된 리뷰 데이터에 해당 카테고리 리뷰 파일이 없습니다.")
     elif reviews_df.empty:
         st.info("대표 리뷰를 불러올 수 없습니다.")
     else:
@@ -240,6 +239,10 @@ if is_initial:
 else:
     # 제품 필터링
     filtered_df = product_filter(df, search_text, selected_sub_cat, selected_skin, min_rating, max_rating, min_price, max_price)
+
+    # 추천 목록에서 선택 상품 제외
+    if selected_product:
+        filtered_df = filtered_df[filtered_df["product_name"] != selected_product]
 
     badge_order = {"BEST": 0, "추천": 1, "": 2}
     filtered_df["badge_rank"] = filtered_df["badge"].map(badge_order).fillna(2)
