@@ -1,4 +1,6 @@
 import streamlit as st
+import numpy as np
+import re
 
 # 사이드바 함수
 def sidebar(df):
@@ -139,10 +141,11 @@ def product_filter(df, search_text, selected_sub_cat, selected_skin, min_rating,
 
     # 검색어 조건
     if search_text:
+        safe_text = re.escape(search_text)  # 정규식 이스케이프
         filtered_df = filtered_df[
             filtered_df["product_name"]
             .str.contains(
-                search_text, 
+                safe_text, 
                 case=False, 
                 na=False)]
 

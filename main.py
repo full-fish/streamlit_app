@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import math
 import scroll
 from load_data import load_raw_df, make_df
@@ -9,6 +10,8 @@ from pathlib import Path
 import sys
 import os
 import re
+
+st.cache_data.clear()
 
 if "product_search" not in st.session_state:
     st.session_state["product_search"] = ""
@@ -52,7 +55,7 @@ review_df = merge_df[[
     "full_text"
 ]].rename(columns={"id": "review_id"})
 
-review_df["full_text"] = review_df["full_text"].apply(lambda x: x[0] if isinstance(x, list) and x else x)
+review_df["full_text"] = review_df["full_text"].apply(lambda x: x[0] if isinstance(x, (list, np.ndarray)) and len(x) > 0 else (x if isinstance(x, str) else ""))
 
 # ===== 사이드바 =====
 selected_sub_cat, selected_skin, min_rating, max_rating, min_price, max_price = sidebar(df)
@@ -127,12 +130,11 @@ if selected_product:
     if product_info.get("product_url"):
         st.link_button("상품 페이지", product_info["product_url"])
 
-    # ===== 요청사항: 대표 긍정 키워드 + 대표 리뷰 =====
     # 대표 긍정 키워드
     st.markdown("### 대표 긍정 키워드")
     top_kw = product_info.get("top_keywords", "")
-    if isinstance(top_kw, list):
-        top_kw = ", ".join(top_kw)
+    if isinstance(top_kw, (list, np.ndarray)):
+        top_kw = ", ".join(map(str, top_kw))
     st.write(top_kw if top_kw else "-")
 
     sub_cat = product_info.get("sub_category", "")

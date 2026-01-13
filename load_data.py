@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from pathlib import Path
 import pyarrow.dataset as ds
 import streamlit as st
@@ -16,7 +17,6 @@ def load_raw_df(parquet_root: Path) -> pd.DataFrame:
         
     return df
 
-@st.cache_data
 def make_df(df: pd.DataFrame) -> pd.DataFrame:
     rating_df = df.groupby("product_id", as_index=False).agg({
         "rating_1": "sum",
@@ -83,13 +83,25 @@ def make_df(df: pd.DataFrame) -> pd.DataFrame:
         sub = parts[-1] if len(parts) >= 3 else parts[-1] if parts else ""
 
         return main, middle, sub
+    
+    # unhashable값들 문자열 변환
+    def _make_hashable_df(df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+        for col in df.columns:
+            if df[col].apply(lambda x: isinstance(x, (list, np.ndarray, dict, set))).any():
+                df[col] = df[col].apply(
+                    lambda x: ", ".join(map(str, x))
+                    if isinstance(x, (list, np.ndarray))
+                    else (str(x) if pd.notna(x) else "")
+                )
+        return df
 
     
     df = df.copy()
     df["category_path_norm"] = df["category_path"].apply(norm_cat)
     df[["main_category", "middle_category", "sub_category"]] = df["category_path_norm"].apply(split_category).apply(pd.Series)
     df["image_url"] = image_url
-    df["top_keywords"] = df["top_keywords"].apply(lambda x: ", ".join(x))
+    df["top_keywords"] = df["top_keywords"].apply(lambda x: ", ".join(x) if isinstance(x, (list, np.ndarray)) else (x if isinstance(x, str) else ""))
 
     product_df = (df[[
                 "product_id",
@@ -113,5 +125,7 @@ def make_df(df: pd.DataFrame) -> pd.DataFrame:
         on="product_id",
         how="left"
     )
+
+    fin_df = _make_hashable_df(fin_df)
 
     return fin_df
