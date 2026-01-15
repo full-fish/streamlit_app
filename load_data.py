@@ -110,8 +110,8 @@ def make_df(df: pd.DataFrame) -> pd.DataFrame:
 
     # 추천 뱃지
     def calc_badge(score, total_reviews):
-        if total_reviews >= 500:
-            if score >= 4.8:
+        if total_reviews >= 1500:
+            if score >= 4.7:
                 return "BEST"
             elif score >= 4.5:
                 return "추천"

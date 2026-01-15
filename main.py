@@ -43,7 +43,6 @@ selected_sub_cat, selected_skin, min_rating, max_rating, min_price, max_price = 
 # ===== 메인 =====
 st.title("화장품 추천 대시보드")
 st.markdown("---")
-st.subheader("제품명 검색")
 
 search_keyword = st.session_state.get("search_keyword", "")
 
@@ -145,7 +144,7 @@ if selected_product:
         review_df = load_date_score(product_id, category, REVIEWS_BASE_DIR)
 
     st.markdown("### 평점 추이")
-    col_left, col_right, col_empty = st.columns([1, 1, 1])
+    col_left, col_mid, col_right, col_empty = st.columns([1, 1, 1, 1])
 
     # 집계 기준
     with col_left:
@@ -154,11 +153,18 @@ if selected_product:
     freq_map = {"일간": ("D", 7), "주간": ("W", 4), "월간": ("M", 3)}
     freq, ma_window = freq_map[freq_label]
 
-    with col_right:
+    with col_mid:
         min_date = review_df["date"].min().date()
         max_date = review_df["date"].max().date()
         
         date_range = st.date_input("기간 선택", value=(min_date, max_date), min_value=min_date, max_value=max_date)
+
+    DATE_RANGE_KEY = "rating_date_range"
+
+    with col_right:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("↺", key="reset_date", help="날짜 초기화"):
+            st.session_state[DATE_RANGE_KEY] = (min_date, max_date)
 
     trend_df = pd.DataFrame()
     is_date_range_ready = False
@@ -218,7 +224,11 @@ if selected_product:
         st.plotly_chart(fig, use_container_width=True)
 
 # ===== 추천 페이지 =====
-st.subheader("추천 상품")
+if not is_initial:
+    if selected_product:
+        st.subheader("이 상품과 유사한 추천 상품")
+    else:
+        st.subheader("검색 결과")
 
 if is_initial:
     st.info("왼쪽 사이드바 또는 검색어를 입력하여 상품을 찾아보세요.")
