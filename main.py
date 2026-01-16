@@ -25,8 +25,21 @@ sys.path.append(os.path.dirname(__file__))
 
 st.set_page_config(layout="wide")
 
-# 요청 시 상단 스크롤 이동 적용
-scroll.apply_scroll_to_top_if_requested()
+# 그래프 UI 조작 시, 이번 rerun에서는 스크롤 적용 스킵
+if "_skip_scroll_apply_once" not in st.session_state:
+    st.session_state["_skip_scroll_apply_once"] = False
+
+def _skip_scroll_apply_once():
+    st.session_state["_skip_scroll_apply_once"] = True
+
+# 요청 시 상단 스크롤 이동 적용 (단, 그래프 조작 직후 1회는 스킵)
+if not st.session_state.get("_skip_scroll_apply_once", False):
+    scroll.apply_scroll_to_top_if_requested()
+else:
+    st.session_state["_skip_scroll_apply_once"] = False
+
+def safe_scroll_to_top():
+    scroll.request_scroll_to_top()
 
 # ===== parquet 로딩 =====
 base_dir = Path(__file__).resolve().parent
@@ -59,7 +72,7 @@ def clear_selected_product():
     # 제품 선택, 검색 상태 초기화
     st.session_state["product_search"] = ""
     st.session_state["search_keyword"] = ""
-    scroll.request_scroll_to_top()
+    safe_scroll_to_top()
 
 
 # selectbox 컨테이너 안으로 이동
@@ -84,7 +97,7 @@ with st.container(border=True):
 def select_product_from_reco(product_name: str):
     st.session_state["product_search"] = product_name
     st.session_state["search_keyword"] = product_name
-    scroll.request_scroll_to_top()
+    safe_scroll_to_top()
 
 
 # 검색어로 사용할 값
@@ -200,7 +213,7 @@ if selected_product:
     else:
         st.text(text)
 
-    # 평점 추이 그래프
+    # 평점 추이 그래프  
     if selected_product:
         product_info = df[df["product_name"] == selected_product].iloc[0]
         product_id = product_info["product_id"]
@@ -216,7 +229,7 @@ if selected_product:
 
     # 집계 기준
     with col_left:
-        freq_label = st.selectbox("평균 기준", ["일간", "주간", "월간"], index=1)
+        freq_label = st.selectbox( "평균 기준", ["일간", "주간", "월간"], index=1, key="rating_freq_label", on_change=_skip_scroll_apply_once)
 
     freq_map = {"일간": ("D", 7), "주간": ("W", 4), "월간": ("M", 3)}
     freq, ma_window = freq_map[freq_label]
@@ -230,18 +243,21 @@ if selected_product:
     with col_mid:
         date_range = st.date_input(
             "기간 선택",
-            key=DATE_RANGE_KEY,
+            value=st.session_state[DATE_RANGE_KEY],
             min_value=min_date,
             max_value=max_date,
+            key=DATE_RANGE_KEY,
+            on_change=_skip_scroll_apply_once,  # 그래프 조작 시 스크롤 apply 1회 스킵
         )
+
+    def reset_date_range():
+        _skip_scroll_apply_once()  # reset 클릭도 그래프 조작으로 간주
+        st.session_state[DATE_RANGE_KEY] = (min_date, max_date)
+        # 필요하면 즉시 반영용 rerun
+        st.rerun()
 
     with col_right:
         st.markdown("<br>", unsafe_allow_html=True)
-
-        def reset_date_range():
-            st.session_state[DATE_RANGE_KEY] = (min_date, max_date)
-            st.rerun()
-
         st.button("↺", key="reset_date", help="날짜 초기화", on_click=reset_date_range)
 
 
@@ -341,8 +357,7 @@ else:
     if st.session_state.get("prev_filter") != cur_filter:
         st.session_state.page = 1
         st.session_state.prev_filter = cur_filter
-        # 필터 변경 시에도 상단으로 이동
-        scroll.request_scroll_to_top()
+        safe_scroll_to_top()
 
     # 데이터 슬라이싱
     start = (st.session_state.page - 1) * items_page
@@ -420,13 +435,13 @@ else:
     def go_prev():
         if st.session_state.page > 1:
             st.session_state.page -= 1
-            scroll.request_scroll_to_top() 
+            safe_scroll_to_top()
 
     # 다음 페이지 이동 콜백 함수
     def go_next():
         if st.session_state.page < total_pages:
             st.session_state.page += 1
-            scroll.request_scroll_to_top()
+            safe_scroll_to_top()
 
     with col_prev:
         # on_click 콜백 방식으로 변경
