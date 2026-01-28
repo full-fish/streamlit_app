@@ -34,43 +34,47 @@ def sidebar(df):
             # 중간 카테고리o
             else:
                 for middle in sorted(middle_cats):
-                    sub_df = main_df[main_df["middle_category"] == middle]
-                    sub_cats = sorted(sub_df["sub_category"].dropna().unique())
+                    with st.expander(middle, expanded=False):
+                        sub_df = main_df[main_df["middle_category"] == middle]
+                        sub_cats = sorted(sub_df["sub_category"].dropna().unique())
 
-                    # mid == sub 인 경우: expander 없이 checkbox 하나
-                    if len(sub_cats) == 1 and sub_cats[0] == middle:
-                        key = f"sub_{main_cat}_{middle}"
-                        main_sub_keys.append(key)
+                        middle_all_key = f"all_middle_{main_cat}_{middle}"
+                        middle_sub_keys = []
 
-                        if st.checkbox(middle, key=key):
-                            selected_sub_cat.append(middle)
+                        # 중간 전체 선택
+                        def toggle_middle_all(keys, all_key):
+                            val = st.session_state.get(all_key, False)
+                            for k in keys:
+                                st.session_state[k] = val
 
-                    # 일반적인 mid > sub 구조
-                    else:
-                        with st.expander(middle, expanded=False):
-                            middle_all_key = f"all_middle_{main_cat}_{middle}"
-                            middle_sub_keys = []
+                        st.checkbox(
+                            "전체 선택",
+                            key=middle_all_key,
+                            on_change=toggle_middle_all,
+                            args=(middle_sub_keys, middle_all_key)
+                        )
 
-                            def toggle_middle_all(keys, all_key):
-                                val = st.session_state.get(all_key, False)
-                                for k in keys:
-                                    st.session_state[k] = val
+                        # 서브 체크박스
+                        for sub in sub_cats:
+                            key = f"sub_{main_cat}_{middle}_{sub}"
+                            middle_sub_keys.append(key)
+                            main_sub_keys.append(key)
 
-                            st.checkbox(
-                                "전체 선택",
-                                key=middle_all_key,
-                                on_change=toggle_middle_all,
-                                args=(middle_sub_keys, middle_all_key)
-                            )
+                            if st.checkbox(sub, key=key):
+                                selected_sub_cat.append(sub)
+                        
+            # 메인 전체 선택
+            def toggle_main_all(keys, all_key):
+                val = st.session_state.get(all_key, False)
+                for k in keys:
+                    st.session_state[k] = val
 
-                            for sub in sub_cats:
-                                key = f"sub_{main_cat}_{middle}_{sub}"
-                                middle_sub_keys.append(key)
-                                main_sub_keys.append(key)
-
-                                if st.checkbox(sub, key=key):
-                                    selected_sub_cat.append(sub)
-
+            st.checkbox(
+                "전체 선택",
+                key=main_all_key,
+                on_change=toggle_main_all,
+                args=(main_sub_keys, main_all_key)
+            )
 
     st.sidebar.caption(f"선택된 카테고리: {len(selected_sub_cat)}개")
 
