@@ -138,6 +138,19 @@ if "score" not in df.columns and "avg_rating_with_text" in df.columns:
 if "badge" not in df.columns:
     df["badge"] = ""
 
+df["badge"] = df["badge"].fillna("").astype(str)
+
+# badge가 비어있으면 계산해서 채움
+if "total_reviews" in df.columns:
+    tr = pd.to_numeric(df["total_reviews"], errors="coerce").fillna(0)
+
+    need = df["badge"].eq("")  # 계산 안 된 행만 채우기
+    best = need & (tr >= 200) & (df["score"] >= 4.9)
+    reco = need & (tr >= 200) & (df["score"] >= 4.8) & (~best)
+
+    df.loc[best, "badge"] = "BEST"
+    df.loc[reco, "badge"] = "추천"
+
 image_url = "https://tr.rbxcdn.com/180DAY-981c49e917ba903009633ed32b3d0ef7/420/420/Hat/Webp/noFilter"
 
 if "image_url" not in df.columns:
@@ -624,6 +637,12 @@ else:
     search_df_view["badge_rank"] = (
         search_df_view.get("badge", "").map(badge_order).fillna(2)
     )
+    # 상품 정렬: 
+    search_df_view = search_df_view.sort_values(
+    by=["badge_rank", "score", "total_reviews"],
+    ascending=[True, False, False],
+    )
+
 
     # =========================
     # ✅ 추천(벡터 기반)은 기존 df(전체 메타) 기준으로 유지
