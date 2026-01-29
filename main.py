@@ -455,14 +455,6 @@ if selected_product:
             with st.spinner("정보를 불러오는 중입니다..."):
                 reviews_df = load_reviews_athena(str(product_id))
 
-        st.markdown("### ✒️ 대표 리뷰")
-        with st.spinner("정보를 불러오는 중입니다..."):
-            text = get_representative_review_text(reviews_df, review_id)
-        if not text:
-            st.info("대표 리뷰가 없습니다.")
-        else:
-            st.text(text)
-
         st.markdown("### 📈 평점 추이")
         if (
             reviews_df.empty
@@ -493,6 +485,8 @@ if selected_product:
                     )
 
                 freq_map = {"일간": ("D", 7), "주간": ("W", 4), "월간": ("M", 3)}
+                # 에러시 아래꺼로
+                # freq_map = {"일간": ("D", 7), "주간": ("W", 4), "월간": ("ME", 3)}
                 freq, ma_window = freq_map[freq_label]
 
                 DATE_RANGE_KEY = "rating_date_range"
