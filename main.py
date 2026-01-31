@@ -55,6 +55,7 @@ def init_session_state():
         "reco_cache": {},
         "reco_target_product_id": None,
         "_skip_scroll_apply_once": False,
+        "last_loaded_product_id": None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -89,6 +90,7 @@ def clear_selected_product():
     """제품 선택 해제"""
     st.session_state["product_search"] = ""
     st.session_state["search_keyword"] = ""
+    st.session_state["last_loaded_product_id"] = None
     safe_scroll_to_top()
 
 
@@ -162,13 +164,15 @@ def main():
             container_review = st.empty()
             container_trend = st.empty()
 
-            load_product_analysis_async(
-                product_id,
-                review_id,
-                container_review,
-                container_trend,
-                skip_scroll_apply_once,
-            )
+            if st.session_state.get("last_loaded_product_id") != product_id:
+                load_product_analysis_async(
+                    product_id,
+                    review_id,
+                    container_review,
+                    container_trend,
+                    skip_scroll_apply_once,
+                )
+                st.session_state["last_loaded_product_id"] = product_id
 
     # =========================
     # 추천/검색 헤더
@@ -178,25 +182,71 @@ def main():
         if selected_product:
             st.markdown("---")
             st.subheader("👍 이 상품과 유사한 추천 상품")
-        else:
-            st.subheader("🌟 검색 결과")
 
-        col_1, col_2 = st.columns([7, 3])
-        with col_2:
-            sort_option = st.selectbox(
-                "정렬 옵션",
-                options=[
-                    "추천순",
-                    "평점 높은 순",
-                    "리뷰 많은 순",
-                    "가격 낮은 순",
-                    "가격 높은 순",
-                ],
-                index=0,
-                key="sort_option",
-                label_visibility="collapsed",
-                on_change=skip_scroll_apply_once,
-            )
+            col_1, col_2, col_3 = st.columns([6, 2, 2])
+            with col_2:
+                sort_option = st.selectbox(
+                    "정렬 옵션",
+                    options=[
+                        "추천순",
+                        "평점 높은 순",
+                        "리뷰 많은 순",
+                        "가격 낮은 순",
+                        "가격 높은 순",
+                    ],
+                    index=0,
+                    key="sort_option",
+                    label_visibility="collapsed",
+                    on_change=skip_scroll_apply_once,
+                )
+
+            with col_3:
+                if selected_product:
+                    all_categories = sorted(df["sub_category"].dropna().unique())
+
+                    # 현재 선택된 상품 카테고리
+                    current_category = (
+                        df.loc[df["product_name"] == selected_product, "sub_category"]
+                        .iloc[0]
+                        if selected_product in df["product_name"].values
+                        else None
+                    )
+
+                    # 디폴트
+                    default_index = (
+                        all_categories.index(current_category)
+                        if current_category in all_categories
+                        else 0
+                    )
+
+                    selected_categories = st.selectbox(
+                        "",
+                        all_categories,
+                        index=default_index,
+                        label_visibility="collapsed",
+                    )
+
+                else:
+                    selected_category = None
+
+        else:
+            # st.subheader("🌟 검색 결과")
+            col_1, col_2 = st.columns([8, 2])
+            with col_2:
+                sort_option = st.selectbox(
+                    "정렬 옵션",
+                    options=[
+                        "추천순",
+                        "평점 높은 순",
+                        "리뷰 많은 순",
+                        "가격 낮은 순",
+                        "가격 높은 순",
+                    ],
+                    index=0,
+                    key="sort_option",
+                    label_visibility="collapsed",
+                    on_change=skip_scroll_apply_once,
+                )
 
     # =========================
     # 검색 결과 처리
@@ -204,49 +254,48 @@ def main():
     if is_initial:
         st.info("왼쪽 사이드바 또는 검색어를 입력하여 상품을 찾아보세요.")
     else:
-        # 필터 적용
-        filtered_df = apply_filters(
-            df,
-            selected_sub_cat,
-            selected_skin,
-            min_rating,
-            max_rating,
-            min_price,
-            max_price,
-            search_text,
-        )
-
-        # 정렬 적용
-        search_df_view = sort_products(filtered_df, sort_option)
-
-        # 페이지네이션 계산
-        items_page, total_pages, category_count = calculate_pagination(
-            search_df_view, selected_product
-        )
-        init_page_state(total_pages)
-
-        # 필터 변경 감지
-        check_filter_change(
-            search_text,
-            selected_sub_cat,
-            selected_skin,
-            min_rating,
-            max_rating,
-            min_price,
-            max_price,
-            sort_option,
-            safe_scroll_to_top,
-        )
-
-        # 페이지 슬라이스
-        page_df = get_page_slice(
-            search_df_view, selected_product, items_page, category_count
-        )
-
-        # =========================
-        # 상품 출력
-        # =========================
         if not selected_product:
+            filtered_df = apply_filters(
+                df,
+                selected_sub_cat,
+                selected_skin,
+                min_rating,
+                max_rating,
+                min_price,
+                max_price,
+                search_text,
+            )
+
+            # 정렬 적용
+            search_df_view = sort_products(filtered_df, sort_option)
+
+            # 페이지네이션 계산
+            items_page, total_pages, category_count = calculate_pagination(
+                search_df_view, selected_product
+            )
+            init_page_state(total_pages)
+
+            # 필터 변경 감지
+            check_filter_change(
+                search_text,
+                selected_sub_cat,
+                selected_skin,
+                min_rating,
+                max_rating,
+                min_price,
+                max_price,
+                sort_option,
+                safe_scroll_to_top,
+            )
+
+            # 페이지 슬라이스
+            page_df = get_page_slice(
+                search_df_view, selected_product, items_page, category_count
+            )
+
+            # =========================
+            # 상품 출력
+            # =========================
             if page_df.empty:
                 st.warning("표시할 상품이 없어요.🥺")
             else:
@@ -255,18 +304,26 @@ def main():
                     category_count,
                     select_product_from_reco,
                 )
+                # =========================
+                # 페이지네이션
+                # =========================
+                show_pagination = selected_product or selected_sub_cat
+                if show_pagination and total_pages > 1:
+                    render_pagination(total_pages, safe_scroll_to_top)
         else:
             # 추천 상품 조회 및 출력
             with st.spinner("정보를 불러오는 중입니다..."):
-                reco_df_view = get_recommendations(df, selected_product)
-            render_recommendations_grid(reco_df_view, select_product_from_reco)
+                reco_df_view = get_recommendations(df, selected_product, [selected_categories] if selected_categories else None)
 
-        # =========================
-        # 페이지네이션
-        # =========================
-        show_pagination = selected_product or selected_sub_cat
-        if show_pagination and total_pages > 1:
-            render_pagination(total_pages, safe_scroll_to_top)
+            if sort_option == "추천순":
+                reco_df_view = reco_df_view.sort_values(
+                    by=["reco_score", "similarity"],
+                    ascending=[False, False],
+                )
+            else:
+                reco_df_view = sort_products(reco_df_view, sort_option)
+
+            render_recommendations_grid(reco_df_view, select_product_from_reco)
 
     # CSS 적용
     css.set_css()
