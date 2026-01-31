@@ -11,6 +11,7 @@ from services.recommend_similar_products import recommend_similar_products
 def get_recommendations(
     df: pd.DataFrame,
     selected_product: str,
+    selected_categories: list[str] | None = None,
 ) -> pd.DataFrame:
     """
     선택한 상품과 유사한 추천 상품 조회
@@ -30,11 +31,13 @@ def get_recommendations(
 
     target_product_id = target_product.iloc[0]["product_id"]
 
+    cache_key = (target_product_id, tuple(selected_categories) if selected_categories else None)
+
     # 캐시 확인
     if st.session_state.get("reco_target_product_id") != target_product_id:
         reco_results = recommend_similar_products(
             product_id=target_product_id,
-            categories=None,
+            categories=selected_categories,
             top_n=100,
         )
 
@@ -67,9 +70,13 @@ def get_recommendations(
         merged_df["similarity"] = merged_df["similarity"].fillna(0)
 
         merged_df = merged_df[merged_df["product_id"] != target_product_id]
+
+        if selected_categories:
+            merged_df = merged_df[merged_df["sub_category"].isin(selected_categories)]
         reco_df_view = (
             merged_df.query("reco_score > 0")
-            .sort_values(by=["reco_score", "similarity"], ascending=[False, False])
+            # .sort_values(by=["reco_score", "similarity"], ascending=[False, False])
+            .groupby("sub_category", group_keys=False)
             .head(6)
         )
 

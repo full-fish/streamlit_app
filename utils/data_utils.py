@@ -216,11 +216,11 @@ def apply_filters(
         filtered_df = filtered_df[
             filtered_df["product_name"]
             .astype(str)
-            .str.contains(s, case=False, na=False)
-            | filtered_df["brand"].astype(str).str.contains(s, case=False, na=False)
+            .str.contains(s, case=False, na=False, regex=False)
+            | filtered_df["brand"].astype(str).str.contains(s, case=False, na=False, regex=False)
             | filtered_df.get("top_keywords", pd.Series([""] * len(filtered_df)))
             .astype(str)
-            .str.contains(s, case=False, na=False)
+            .str.contains(s, case=False, na=False, regex=False)
         ]
 
     return filtered_df
