@@ -33,7 +33,7 @@ SELECT
     representative_review_id_roberta_semantic,
     representative_similarity_roberta_semantic,
     sentiment_score
-FROM coupang_db.integrated_products_final_v2
+FROM coupang_db.integrated_products_final_v3
 """
 
 
@@ -52,7 +52,7 @@ def fetch_reviews_by_product(product_id: str):
         content,
         score,
         date
-    FROM coupang_db.partitioned_reviews_v2
+    FROM coupang_db.reviews_v3
     WHERE product_id = '{pid}'
     ORDER BY date DESC
     """
@@ -111,7 +111,7 @@ def search_products_flexible(
       sentiment_score,
       top_keywords,
       product_url
-    FROM coupang_db.integrated_products_final_v2
+    FROM coupang_db.integrated_products_final_v3
     WHERE {where_sql}
     ORDER BY total_reviews DESC, avg_rating_with_text DESC
     {limit_sql}
@@ -122,7 +122,7 @@ def search_products_flexible(
 def load_products_data_from_athena(
     categories: Optional[List[str]] = None,
     vector_type: str = "roberta_semantic",
-    table_name: str = "coupang_db.integrated_products_final_v2",
+    table_name: str = "coupang_db.integrated_products_final_v3",
 ):
     vector_col = f"product_vector_{vector_type}"
 
@@ -167,7 +167,7 @@ def fetch_representative_review_text(product_id: str, review_id: int):
     # SQL WHERE절에 review_id를 직접 넣는 것이 핵심입니다.
     sql = f"""
     SELECT full_text, title, content
-    FROM coupang_db.partitioned_reviews_v2
+    FROM coupang_db.reviews_v3
     WHERE product_id = '{pid}' AND id = {int(review_id)}
     LIMIT 1
     """
